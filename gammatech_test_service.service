@@ -1,0 +1,13 @@
+[Unit]
+Description=Gammatech test service
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/Gammatech_test.sh
+StandardOutput=tty
+StandardError=tty
+TTYPath=/dev/pts/0
+
+[Install]
+WantedBy=multi-user.target
+
