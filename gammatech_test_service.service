@@ -4,9 +4,11 @@ After=network.target
 
 [Service]
 ExecStart=/usr/local/bin/Gammatech_test.sh
+StandartInput=tty
 StandardOutput=tty
 StandardError=tty
 TTYPath=/dev/pts/0
+Restart=always
 
 [Install]
 WantedBy=multi-user.target
