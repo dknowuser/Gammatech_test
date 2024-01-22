@@ -9,11 +9,18 @@ PONG_MSG="Pong"
 BREAK_MSG="Break"
 GET_MSG="Get"
 
+HOSTNAME=$(hostname)
+OS_VERSION=$(cat /etc/os-release | grep PRETTY_NAME | cut -d '"' -f 2)
+SERIAL_NUMBER=$(cat /proc/cpuinfo | grep Serial | cut -d ' ' -f 2)
+DESCRIPTION="Some description."
+
 TEMP_FILENAME="/usr/local/bin/temp"
 
 PING_PONG_TIMEOUT_S=10
 PING_PONG_COUNTER_S=0
 
+# The first parameter is connection status: 0 -- there is no active connection,
+# 1 -- connection established.
 save_connection_status () {
   rm -f $TEMP_FILENAME
   touch $TEMP_FILENAME
@@ -28,9 +35,11 @@ write_to_named_pipe () {
   echo -e $2 "\r" >$1 &
 }
 
+# The first parameter is netcat stdin.
+# The second parameter is a pipe from which "Pong" event should be expected.
 check_ping_pong_timeout () {
   write_to_named_pipe $1 $PING_MSG
-	
+
   while [[ $(echo "$PING_PONG_COUNTER_S < $PING_PONG_TIMEOUT_S" | bc -l) -eq 1 ]]; do
     PONG_FIFO_CONTENTS=$(cat 0<> $2 < $2)
     PONG_FIFO_CONTENTS_LENGTH=${#PONG_FIFO_CONTENTS}
@@ -40,8 +49,7 @@ check_ping_pong_timeout () {
       PING_PONG_COUNTER_S=0
     fi
 
-    sleep 1 
-    echo "$PING_PONG_COUNTER_S"
+    sleep 1
   done
 
   echo "$PROGNAME: Timeout."
@@ -66,7 +74,6 @@ cat <>nc_stdin_fifo | $(nc -l -p $PORTNUM >nc_stdout_fifo) &
 
 while read -r line; do
   CONNECTION_ESTABLISHED=$(cat $TEMP_FILENAME)
-  echo "$CONNECTION_ESTABLISHED"
   line=$(echo "$line" | tr -d '"\r\n')
   echo "$PROGNAME: $line"
   if [[ "$line" == "$CONNECT_MSG" ]]; then
@@ -87,12 +94,18 @@ while read -r line; do
     fi
   elif [[ "$line" == "$BREAK_MSG" ]]; then
     clean_exit 0
+  elif [[ "$line" == "$GET_MSG" ]]; then
+    if [[ $(($CONNECTION_ESTABLISHED)) -eq 1 ]]; then
+      write_to_named_pipe nc_stdin_fifo "Device Name: $HOSTNAME"
+      write_to_named_pipe nc_stdin_fifo "OS Version: $OS_VERSION"
+      write_to_named_pipe nc_stdin_fifo "Serial Number: $SERIAL_NUMBER"
+      write_to_named_pipe nc_stdin_fifo "Description: $DESCRIPTION"
+    else
+      echo "$PROGNAME: there is no active connection."
+    fi
   else
     echo "$PROGNAME: unknown command."
   fi
 done <nc_stdout_fifo
-
-
-
 
 clean_exit 0
