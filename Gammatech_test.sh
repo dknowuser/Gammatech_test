@@ -85,6 +85,8 @@ while read -r line; do
     else
       echo 1 > pong_fifo
     fi
+  elif [[ "$line" == "$BREAK_MSG" ]]; then
+    clean_exit 0
   else
     echo "$PROGNAME: unknown command."
   fi
