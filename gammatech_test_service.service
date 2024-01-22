@@ -9,6 +9,7 @@ StandardOutput=tty
 StandardError=tty
 TTYPath=/dev/pts/0
 Restart=always
+ExecStopPost=-/usr/bin/rm -f /tmp/Gammatech_test/temp /tmp/Gammatech_test/pong_fifo /tmp/Gammatech_test/nc_stdin_fifo /tmp/Gammatech_test/nc_stdout_fifo; rm -r /tmp/Gammatech_test/
 
 [Install]
 WantedBy=multi-user.target

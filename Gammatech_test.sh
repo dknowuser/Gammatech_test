@@ -3,6 +3,21 @@
 PROGNAME="Gammatech_test"
 PORTNUM=23
 
+IPV4_ADDRESS=$(ip a | grep "inet 192.168." | cut -d ' ' -f 6)
+
+TEMP_FOLDER_PATH="/tmp/$PROGNAME"
+
+mkdir $TEMP_FOLDER_PATH
+
+NC_STDIN_FIFO="$TEMP_FOLDER_PATH/nc_stdin_fifo"
+NC_STDOUT_FIFO="$TEMP_FOLDER_PATH/nc_stdout_fifo"
+PONG_FIFO="$TEMP_FOLDER_PATH/pong_fifo"
+TEMP_FILENAME="$TEMP_FOLDER_PATH/temp"
+
+mkfifo $NC_STDIN_FIFO
+mkfifo $NC_STDOUT_FIFO
+mkfifo $PONG_FIFO
+
 CONNECT_MSG="Connect"
 PING_MSG="Ping"
 PONG_MSG="Pong"
@@ -13,8 +28,6 @@ HOSTNAME=$(hostname)
 OS_VERSION=$(cat /etc/os-release | grep PRETTY_NAME | cut -d '"' -f 2)
 SERIAL_NUMBER=$(cat /proc/cpuinfo | grep Serial | cut -d ' ' -f 2)
 DESCRIPTION="Some description."
-
-TEMP_FILENAME="/usr/local/bin/temp"
 
 PING_PONG_TIMEOUT_S=10
 PING_PONG_COUNTER_S=0
@@ -56,21 +69,9 @@ check_ping_pong_timeout () {
   save_connection_status 0
 }
 
-clean_exit () {
-  rm -f nc_stdout_fifo
-  rm -f nc_stdin_fifo
-  rm -f pong_fifo
+echo "$PROGNAME: the service waits for a new connection on $IPV4_ADDRESS."
 
-  exit $1
-}
-
-mkfifo nc_stdout_fifo
-mkfifo nc_stdin_fifo
-mkfifo pong_fifo
-
-echo "$PROGNAME: the service waits for a new connection."
-
-cat <>nc_stdin_fifo | $(nc -l -p $PORTNUM >nc_stdout_fifo) &
+cat <>$NC_STDIN_FIFO | $(nc -l -p $PORTNUM >$NC_STDOUT_FIFO) &
 
 while read -r line; do
   CONNECTION_ESTABLISHED=$(cat $TEMP_FILENAME)
@@ -84,28 +85,28 @@ while read -r line; do
 
     echo "$PROGNAME: connect request accepted. Ping-pong procedure started."
     save_connection_status 1
-    check_ping_pong_timeout nc_stdin_fifo pong_fifo &
+    check_ping_pong_timeout $NC_STDIN_FIFO $PONG_FIFO &
   elif [[ "$line" == "$PONG_MSG" ]]; then
     if [[ $(($CONNECTION_ESTABLISHED)) -eq 0 ]]; then
       echo "$PROGNAME: there is no any connection established."
       continue
     else
-      echo 1 > pong_fifo
+      echo 1 > $PONG_FIFO
     fi
   elif [[ "$line" == "$BREAK_MSG" ]]; then
-    clean_exit 0
+    exit 0
   elif [[ "$line" == "$GET_MSG" ]]; then
     if [[ $(($CONNECTION_ESTABLISHED)) -eq 1 ]]; then
-      write_to_named_pipe nc_stdin_fifo "Device Name: $HOSTNAME"
-      write_to_named_pipe nc_stdin_fifo "OS Version: $OS_VERSION"
-      write_to_named_pipe nc_stdin_fifo "Serial Number: $SERIAL_NUMBER"
-      write_to_named_pipe nc_stdin_fifo "Description: $DESCRIPTION"
+      write_to_named_pipe $NC_STDIN_FIFO "Device Name: $HOSTNAME"
+      write_to_named_pipe $NC_STDIN_FIFO "OS Version: $OS_VERSION"
+      write_to_named_pipe $NC_STDIN_FIFO "Serial Number: $SERIAL_NUMBER"
+      write_to_named_pipe $NC_STDIN_FIFO "Description: $DESCRIPTION"
     else
       echo "$PROGNAME: there is no active connection."
     fi
   else
     echo "$PROGNAME: unknown command."
   fi
-done <nc_stdout_fifo
+done <$NC_STDOUT_FIFO
 
-clean_exit 0
+exit 0
