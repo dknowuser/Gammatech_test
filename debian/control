@@ -1,0 +1,11 @@
+Source: gammatech-test
+Section: test
+Priority: optional
+Build-Depends: debhelper (>= 10), dh-systemd (>= 1.5)
+Standards-Version: 4.0.0
+Maintainer: Liliia Marchuk <maro4uk@yandex.ru>
+
+Package: gammatech-test
+Architecture: any
+Depends: netcat, ${misc:Depends}
+Description: A small package to get and process commands from a remote client.

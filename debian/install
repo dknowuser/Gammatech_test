@@ -1,0 +1,2 @@
+debian/lib/systemd/system/gammatech-test.service /lib/systemd/system/
+debian/usr/bin/Gammatech_test.sh /usr/bin
